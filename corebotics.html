@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CoreBotics — WE ❤️ ROBOTS</title>
+  <meta name="description" content="Geleceğin otonom mekanik sistemleri, çekirdekten yeniden tasarlanıyor." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --black: #020408;
+      --dark: #080d14;
+      --panel: #0a1120;
+      --blue: #00c8ff;
+      --blue-dim: #0070a0;
+      --blue-glow: rgba(0, 200, 255, 0.18);
+      --yellow: #ffe600;
+      --yellow-dim: #a09000;
+      --red: #ff2e5b;
+      --white: #e8f4ff;
+      --muted: #4a6480;
+      --grid-line: rgba(0, 200, 255, 0.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ── CURSOR ── */
+    .cursor {
+      position: fixed;
+      width: 14px; height: 14px;
+      border: 1.5px solid var(--blue);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width .15s, height .15s, border-color .15s;
+      mix-blend-mode: screen;
+    }
+    .cursor-dot {
+      position: fixed;
+      width: 4px; height: 4px;
+      background: var(--blue);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+    }
+
+    /* ── SCANLINE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.12) 3px,
+        rgba(0,0,0,0.12) 4px
+      );
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ── GRID BG ── */
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NOISE GRAIN ── */
+    .noise {
+      position: fixed;
+      inset: 0;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 40px;
+      background: linear-gradient(to bottom, rgba(2,4,8,.9), transparent);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(0,200,255,.07);
+    }
+
+    .nav-logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: 1rem;
+      letter-spacing: .2em;
+      color: var(--blue);
+      text-shadow: 0 0 12px var(--blue);
+    }
+
+    .nav-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .65rem;
+      letter-spacing: .15em;
+      color: var(--yellow);
+      border: 1px solid var(--yellow-dim);
+      padding: 4px 10px;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+    }
+    .nav-badge::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--yellow);
+      opacity: .06;
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .65rem;
+      color: var(--muted);
+      letter-spacing: .1em;
+    }
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 8px var(--blue);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .4; transform: scale(.7); }
+    }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      overflow: hidden;
+    }
+
+    /* radial glow behind hero */
+    #hero::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(0,200,255,.09) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* corner decorations */
+    .corner {
+      position: absolute;
+      width: 40px; height: 40px;
+      opacity: .5;
+    }
+    .corner-tl { top: 100px; left: 40px; border-top: 1.5px solid var(--blue); border-left: 1.5px solid var(--blue); }
+    .corner-tr { top: 100px; right: 40px; border-top: 1.5px solid var(--blue); border-right: 1.5px solid var(--blue); }
+    .corner-bl { bottom: 80px; left: 40px; border-bottom: 1.5px solid var(--blue); border-left: 1.5px solid var(--blue); }
+    .corner-br { bottom: 80px; right: 40px; border-bottom: 1.5px solid var(--blue); border-right: 1.5px solid var(--blue); }
+
+    /* hexagonal bg accent */
+    .hex-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) rotate(30deg);
+      width: 520px; height: 520px;
+      border: 1px solid rgba(0,200,255,.08);
+      clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+      animation: spin 40s linear infinite;
+    }
+    .hex-ring-2 {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) rotate(0deg);
+      width: 380px; height: 380px;
+      border: 1px solid rgba(0,200,255,.05);
+      clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+      animation: spin 28s linear infinite reverse;
+    }
+    @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+    .hero-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .65rem;
+      letter-spacing: .3em;
+      color: var(--blue-dim);
+      margin-bottom: 32px;
+      text-transform: uppercase;
+      opacity: 0;
+      animation: fadeUp .8s .3s forwards;
+    }
+
+    .hero-logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: clamp(3rem, 10vw, 7rem);
+      line-height: 1;
+      letter-spacing: .05em;
+      color: #fff;
+      text-shadow:
+        0 0 20px rgba(0,200,255,.6),
+        0 0 60px rgba(0,200,255,.25),
+        0 0 120px rgba(0,200,255,.1);
+      opacity: 0;
+      animation: fadeUp .8s .5s forwards, glitchLogo 8s 2s infinite;
+      position: relative;
+      z-index: 2;
+    }
+    .hero-logo span { color: var(--blue); }
+
+    @keyframes glitchLogo {
+      0%,96%,100% { text-shadow: 0 0 20px rgba(0,200,255,.6), 0 0 60px rgba(0,200,255,.25), 0 0 120px rgba(0,200,255,.1); clip-path: none; }
+      97% { clip-path: inset(20% 0 30% 0); transform: translate(-4px,0); text-shadow: -2px 0 var(--red), 2px 0 var(--blue); }
+      98% { clip-path: inset(50% 0 20% 0); transform: translate(4px,0); text-shadow: 2px 0 var(--red), -2px 0 var(--blue); }
+      99% { clip-path: none; transform: translate(0); }
+    }
+
+    .hero-divider {
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--blue), transparent);
+      margin: 24px auto;
+      opacity: 0;
+      animation: fadeUp .8s .7s forwards;
+    }
+
+    .hero-slogan {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.1rem, 3vw, 1.8rem);
+      letter-spacing: .2em;
+      font-weight: 700;
+      color: var(--white);
+      opacity: 0;
+      animation: fadeUp .8s .9s forwards;
+    }
+    .hero-slogan .heart { color: var(--red); filter: drop-shadow(0 0 6px var(--red)); animation: heartbeat 1.5s ease-in-out infinite; display: inline-block; }
+    @keyframes heartbeat {
+      0%,100% { transform: scale(1); }
+      14% { transform: scale(1.2); }
+      28% { transform: scale(1); }
+      42% { transform: scale(1.15); }
+      56% { transform: scale(1); }
+    }
+
+    .hero-sub {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 300;
+      font-size: clamp(.95rem, 2vw, 1.2rem);
+      color: var(--muted);
+      letter-spacing: .08em;
+      max-width: 520px;
+      margin-top: 20px;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp .8s 1.1s forwards;
+    }
+    .hero-sub strong { color: var(--blue); font-weight: 600; }
+
+    .hero-cta {
+      margin-top: 44px;
+      opacity: 0;
+      animation: fadeUp .8s 1.3s forwards;
+    }
+    .btn-primary {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .8rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--black);
+      background: var(--blue);
+      border: none;
+      padding: 14px 36px;
+      cursor: none;
+      position: relative;
+      overflow: hidden;
+      clip-path: polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+      transition: box-shadow .3s;
+    }
+    .btn-primary:hover { box-shadow: 0 0 24px var(--blue), 0 0 60px rgba(0,200,255,.3); }
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.25) 50%, transparent 100%);
+      transform: translateX(-100%);
+      transition: transform .4s;
+    }
+    .btn-primary:hover::before { transform: translateX(100%); }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .6rem;
+      letter-spacing: .2em;
+      color: var(--muted);
+      opacity: 0;
+      animation: fadeIn 1s 2s forwards;
+    }
+    .scroll-arrow {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--blue), transparent);
+      animation: scrollDrop 1.5s ease-in-out infinite;
+    }
+    @keyframes scrollDrop {
+      0% { transform: scaleY(0); transform-origin: top; }
+      50% { transform: scaleY(1); transform-origin: top; }
+      51% { transform: scaleY(1); transform-origin: bottom; }
+      100% { transform: scaleY(0); transform-origin: bottom; }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    /* ── SECTION BASE ── */
+    section {
+      position: relative;
+      z-index: 10;
+      padding: 100px 24px;
+    }
+    .section-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .section-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .65rem;
+      letter-spacing: .3em;
+      color: var(--blue);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-tag::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 1px;
+      background: var(--blue);
+    }
+    .section-title {
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      letter-spacing: .05em;
+      margin-bottom: 40px;
+      line-height: 1.2;
+    }
+
+    /* ── VISION ── */
+    #vision {
+      border-top: 1px solid rgba(0,200,255,.07);
+    }
+    .vision-card {
+      background: var(--panel);
+      border: 1px solid rgba(0,200,255,.1);
+      padding: 48px 52px;
+      position: relative;
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+    }
+    .vision-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--blue-glow) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .vision-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 60px; height: 60px;
+      border-top: 1px solid var(--blue);
+      border-right: 1px solid var(--blue);
+      opacity: .4;
+    }
+    .vision-text {
+      font-size: 1.15rem;
+      font-weight: 300;
+      line-height: 1.85;
+      color: #9ab8d4;
+      letter-spacing: .02em;
+    }
+    .vision-text strong { color: var(--white); font-weight: 600; }
+    .vision-text em { color: var(--blue); font-style: normal; }
+
+    .vision-quote-mark {
+      font-family: 'Orbitron', monospace;
+      font-size: 5rem;
+      color: rgba(0,200,255,.08);
+      line-height: 1;
+      margin-bottom: -20px;
+      display: block;
+    }
+
+    /* ── STATUS PANEL ── */
+    #status {
+      border-top: 1px solid rgba(0,200,255,.07);
+    }
+    .status-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .status-id {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .65rem;
+      color: var(--muted);
+      letter-spacing: .15em;
+    }
+
+    .progress-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .progress-item {
+      position: relative;
+    }
+    .progress-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .progress-label {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+      font-size: .95rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--white);
+    }
+    .progress-val {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .75rem;
+      letter-spacing: .1em;
+    }
+    .pv-active { color: var(--blue); text-shadow: 0 0 8px var(--blue); }
+    .pv-pending {
+      color: var(--yellow);
+      text-shadow: 0 0 8px var(--yellow);
+      animation: blink .9s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .progress-track {
+      height: 6px;
+      background: rgba(255,255,255,.05);
+      position: relative;
+      overflow: visible;
+      clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    }
+    .progress-track::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0px, rgba(255,255,255,.03) 8px, transparent 8px, transparent 16px);
+    }
+    .progress-fill {
+      height: 100%;
+      position: relative;
+      transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 0;
+    }
+    .fill-blue {
+      background: linear-gradient(90deg, var(--blue-dim), var(--blue));
+      box-shadow: 0 0 12px var(--blue);
+    }
+    .fill-blue::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 50%;
+      transform: translateY(-50%);
+      width: 10px; height: 10px;
+      background: var(--blue);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--blue), 0 0 20px var(--blue);
+    }
+    .progress-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .6rem;
+      color: var(--muted);
+      margin-top: 6px;
+      letter-spacing: .1em;
+    }
+
+    .pending-bar {
+      height: 6px;
+      background: repeating-linear-gradient(90deg, var(--yellow-dim) 0px, var(--yellow-dim) 6px, transparent 6px, transparent 12px);
+      opacity: .4;
+      clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    }
+
+    .status-footer {
+      margin-top: 48px;
+      padding: 20px 24px;
+      border: 1px solid rgba(0,200,255,.08);
+      background: rgba(0,200,255,.02);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+    }
+    .status-footer-icon {
+      width: 32px; height: 32px;
+      border: 1px solid rgba(0,200,255,.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: .8rem;
+    }
+    .status-footer-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .68rem;
+      color: var(--muted);
+      letter-spacing: .08em;
+      line-height: 1.6;
+    }
+    .status-footer-text span { color: var(--blue); }
+
+    /* ── NEWSLETTER ── */
+    #newsletter {
+      border-top: 1px solid rgba(0,200,255,.07);
+    }
+    .newsletter-wrapper {
+      background: var(--panel);
+      border: 1px solid rgba(0,200,255,.1);
+      padding: 60px 52px;
+      position: relative;
+      overflow: hidden;
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+    }
+    .newsletter-wrapper::before {
+      content: '';
+      position: absolute;
+      bottom: -60px; right: -60px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(0,200,255,.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Decorative circuit lines */
+    .nl-deco {
+      position: absolute;
+      top: 0; right: 80px;
+      width: 1px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--blue), transparent 60%);
+      opacity: .08;
+    }
+    .nl-deco::after {
+      content: '';
+      position: absolute;
+      top: 40px; left: -30px;
+      width: 60px; height: 1px;
+      background: var(--blue);
+      opacity: .5;
+    }
+
+    .newsletter-title {
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      font-size: clamp(1.2rem, 3vw, 1.8rem);
+      letter-spacing: .05em;
+      margin-bottom: 12px;
+    }
+    .newsletter-desc {
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--muted);
+      letter-spacing: .04em;
+      margin-bottom: 36px;
+      line-height: 1.7;
+    }
+    .newsletter-desc strong { color: var(--blue); font-weight: 600; }
+
+    .form-row {
+      display: flex;
+      gap: 0;
+      max-width: 520px;
+    }
+    .email-input {
+      flex: 1;
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(0,200,255,.2);
+      border-right: none;
+      color: var(--white);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .8rem;
+      letter-spacing: .1em;
+      padding: 14px 20px;
+      outline: none;
+      transition: border-color .3s, box-shadow .3s;
+      cursor: none;
+    }
+    .email-input::placeholder { color: var(--muted); }
+    .email-input:focus {
+      border-color: var(--blue);
+      box-shadow: inset 0 0 12px rgba(0,200,255,.05);
+    }
+    .form-btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .75rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--black);
+      background: var(--blue);
+      border: none;
+      padding: 14px 28px;
+      cursor: none;
+      white-space: nowrap;
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow .3s;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    }
+    .form-btn:hover { box-shadow: 0 0 20px var(--blue); }
+    .form-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
+      transform: translateX(-100%);
+      transition: transform .4s;
+    }
+    .form-btn:hover::before { transform: translateX(100%); }
+
+    .form-notice {
+      margin-top: 14px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .6rem;
+      color: var(--muted);
+      letter-spacing: .08em;
+    }
+    .form-notice a { color: var(--blue-dim); text-decoration: none; }
+
+    .success-msg {
+      display: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .8rem;
+      color: var(--blue);
+      letter-spacing: .12em;
+      margin-top: 16px;
+      padding: 12px 20px;
+      border: 1px solid rgba(0,200,255,.25);
+      background: rgba(0,200,255,.04);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative;
+      z-index: 10;
+      border-top: 1px solid rgba(0,200,255,.07);
+      padding: 40px 40px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: 1rem;
+      letter-spacing: .2em;
+      color: rgba(0,200,255,.4);
+    }
+    .footer-copy {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .6rem;
+      color: var(--muted);
+      letter-spacing: .1em;
+      text-align: center;
+    }
+    .footer-copy a { color: rgba(0,200,255,.5); text-decoration: none; }
+    .footer-contact {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .6rem;
+      color: var(--muted);
+      letter-spacing: .08em;
+    }
+    .footer-contact a { color: rgba(0,200,255,.5); text-decoration: none; }
+
+    /* ── SCROLL ANIMATIONS ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .8s ease, transform .8s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      nav { padding: 16px 20px; }
+      .corner { display: none; }
+      .vision-card, .newsletter-wrapper { padding: 32px 24px; }
+      .form-row { flex-direction: column; }
+      .email-input { border-right: 1px solid rgba(0,200,255,.2); border-bottom: none; }
+      .form-btn { clip-path: none; }
+      footer { flex-direction: column; align-items: center; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cursor -->
+  <div class="cursor" id="cursor"></div>
+  <div class="cursor-dot" id="cursorDot"></div>
+
+  <!-- BG -->
+  <div class="grid-bg"></div>
+  <div class="noise"></div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">COREBOTICS</div>
+    <div class="nav-badge">⬡ STEALTH MODE</div>
+    <div class="nav-status">
+      <div class="status-dot"></div>
+      SISTEM AKTİF
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hex-ring"></div>
+    <div class="hex-ring-2"></div>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+
+    <p class="hero-label">// robotic_systems_init — v0.0.1 — classified</p>
+    <h1 class="hero-logo">CORE<span>BOTICS</span></h1>
+    <div class="hero-divider"></div>
+    <p class="hero-slogan">WE <span class="heart">❤</span> ROBOTS</p>
+    <p class="hero-sub">
+      Geleceğin otonom mekanik sistemleri,<br>
+      <strong>çekirdekten</strong> yeniden tasarlanıyor.<br>
+      <strong>Çok yakında.</strong>
+    </p>
+    <div class="hero-cta">
+      <button class="btn-primary" onclick="document.getElementById('newsletter').scrollIntoView({behavior:'smooth'})">
+        // LANSMANI KAÇIRMA
+      </button>
+    </div>
+
+    <div class="scroll-hint">
+      <span>SCROLL</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </section>
+
+  <!-- VISION -->
+  <section id="vision">
+    <div class="section-inner">
+      <div class="reveal">
+        <p class="section-tag">01 — vizyon</p>
+        <h2 class="section-title">Neden Varız?</h2>
+      </div>
+      <div class="vision-card reveal">
+        <span class="vision-quote-mark">"</span>
+        <p class="vision-text">
+          Biz <strong>CoreBotics</strong> olarak, makinelerin sadece komutları yerine getiren
+          <em>metal yığınları</em> olmadığına inanıyoruz. Mühendisliğin ve yazılımın
+          sınırlarını zorlayarak, hayatı kolaylaştıracak <strong>otonom donanımlar</strong>
+          geliştiriyoruz.<br /><br />
+          Detaylar <em>gizli</em>, tutkumuz ise ortada.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATUS -->
+  <section id="status">
+    <div class="section-inner">
+      <div class="status-header-bar reveal">
+        <div>
+          <p class="section-tag">02 — girişim durumu</p>
+          <h2 class="section-title">Proje İlerleme Paneli</h2>
+        </div>
+        <div class="status-id">ID: CBX-2025-ALPHA // SINIFLI</div>
+      </div>
+
+      <div class="progress-grid">
+
+        <div class="progress-item reveal">
+          <div class="progress-meta">
+            <span class="progress-label">⬡ Mekanik Tasarım</span>
+            <span class="progress-val pv-active" data-target="90">00%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill fill-blue" data-width="90"></div>
+          </div>
+          <p class="progress-sub">> TAMAMLANAN AŞAMA — İÇ DONANIM MİMARİSİ KİLİTLENDİ</p>
+        </div>
+
+        <div class="progress-item reveal">
+          <div class="progress-meta">
+            <span class="progress-label">⬡ Yazılım & Otonom Entegrasyonu</span>
+            <span class="progress-val pv-active" data-target="75">00%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill fill-blue" data-width="75"></div>
+          </div>
+          <p class="progress-sub">> AKTİF GELİŞTİRME — KONTROL ALGORİTMALARI DEVREDE</p>
+        </div>
+
+        <div class="progress-item reveal">
+          <div class="progress-meta">
+            <span class="progress-label">⬡ Saha Testleri</span>
+            <span class="progress-val pv-pending">// BEKLENİYOR</span>
+          </div>
+          <div class="pending-bar"></div>
+          <p class="progress-sub">> PROTOKOL HAZIR — BAŞLAMA TARİHİ GİZLİ</p>
+        </div>
+
+        <div class="progress-item reveal">
+          <div class="progress-meta">
+            <span class="progress-label">⬡ Piyasaya Çıkış</span>
+            <span class="progress-val pv-pending">// GİZLİ</span>
+          </div>
+          <div class="pending-bar" style="opacity:.2"></div>
+          <p class="progress-sub">> VERİLER SINIFLANDIRILDI — YETKİSİZ ERİŞİM ENGELLENECEK</p>
+        </div>
+
+      </div>
+
+      <div class="status-footer reveal">
+        <div class="status-footer-icon">🔒</div>
+        <p class="status-footer-text">
+          Bu panel yalnızca <span>CoreBotics</span> içindir. Tüm teknik detaylar, ürün şemaları ve proje planları
+          gizlilik kapsamında korunmaktadır. Bilgi almak için bültenimize kaydolun.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- NEWSLETTER -->
+  <section id="newsletter">
+    <div class="section-inner">
+      <div class="reveal">
+        <p class="section-tag">03 — erken erişim</p>
+      </div>
+      <div class="newsletter-wrapper reveal">
+        <div class="nl-deco"></div>
+        <h2 class="newsletter-title">Aramıza Katıl</h2>
+        <p class="newsletter-desc">
+          Gelişmelerden ve <strong>büyük lansmandan</strong> ilk siz haberdar olun.<br>
+          İçeride ne olduğunu öğrenmek isteyenler için ayrılmış bir liste.
+        </p>
+        <div>
+          <div class="form-row">
+            <input
+              class="email-input"
+              type="email"
+              id="emailInput"
+              placeholder="// e-posta adresin"
+              autocomplete="off"
+            />
+            <button class="form-btn" onclick="handleSubscribe()">Aramıza Katıl →</button>
+          </div>
+          <p class="form-notice">
+            Spam yok. Sadece büyük haberler. İstediğinde ayrılabilirsin. &nbsp;|&nbsp;
+            <a href="mailto:infoandhelphighly@gmail.com">iletişim</a>
+          </p>
+          <div class="success-msg" id="successMsg">
+            ✓ KAYDEDİLDİ — Büyük lansmanı birlikte bekleyeceğiz.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">COREBOTICS</div>
+    <div class="footer-copy">
+      © 2025 CoreBotics — Tüm hakları saklıdır.<br>
+      <span style="opacity:.5">Powered by </span><a href="https://highly.com.tr" target="_blank">Highly</a>
+      &nbsp;|&nbsp;
+      <span style="opacity:.5">corebotics.highly.com.tr</span>
+    </div>
+    <div class="footer-contact">
+      <a href="mailto:infoandhelphighly@gmail.com">infoandhelphighly@gmail.com</a>
+    </div>
+  </footer>
+
+  <script>
+    // ── Cursor
+    const cursor = document.getElementById('cursor');
+    const dot = document.getElementById('cursorDot');
+    let mx = 0, my = 0, cx = 0, cy = 0;
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    function animCursor() {
+      cx += (mx - cx) * .12;
+      cy += (my - cy) * .12;
+      cursor.style.left = cx + 'px';
+      cursor.style.top = cy + 'px';
+      dot.style.left = mx + 'px';
+      dot.style.top = my + 'px';
+      requestAnimationFrame(animCursor);
+    }
+    animCursor();
+    document.querySelectorAll('button, a, input').forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        cursor.style.width = '28px';
+        cursor.style.height = '28px';
+        cursor.style.borderColor = 'rgba(0,200,255,.5)';
+      });
+      el.addEventListener('mouseleave', () => {
+        cursor.style.width = '14px';
+        cursor.style.height = '14px';
+        cursor.style.borderColor = 'var(--blue)';
+      });
+    });
+
+    // ── Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e, i) => {
+        if (e.isIntersecting) {
+          setTimeout(() => e.target.classList.add('visible'), i * 80);
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    reveals.forEach(r => io.observe(r));
+
+    // ── Progress bars + counter
+    const bars = document.querySelectorAll('.progress-fill');
+    const vals = document.querySelectorAll('.progress-val[data-target]');
+    const barIO = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          // animate bars
+          bars.forEach(bar => {
+            const w = bar.dataset.width;
+            setTimeout(() => { bar.style.width = w + '%'; }, 300);
+          });
+          // animate counters
+          vals.forEach(val => {
+            const target = parseInt(val.dataset.target);
+            let current = 0;
+            const step = () => {
+              current += 2;
+              if (current > target) current = target;
+              val.textContent = String(current).padStart(2, '0') + '%';
+              if (current < target) setTimeout(step, 18);
+            };
+            setTimeout(step, 500);
+          });
+          barIO.disconnect();
+        }
+      });
+    }, { threshold: 0.2 });
+    barIO.observe(document.getElementById('status'));
+
+    // ── Subscribe
+    function handleSubscribe() {
+      const input = document.getElementById('emailInput');
+      const msg = document.getElementById('successMsg');
+      const val = input.value.trim();
+      if (!val || !val.includes('@')) {
+        input.style.borderColor = '#ff2e5b';
+        input.focus();
+        setTimeout(() => { input.style.borderColor = ''; }, 1500);
+        return;
+      }
+      input.disabled = true;
+      document.querySelector('.form-btn').disabled = true;
+      document.querySelector('.form-btn').textContent = '// KAYDEDİLİYOR...';
+      setTimeout(() => {
+        msg.style.display = 'block';
+        document.querySelector('.form-btn').textContent = '✓ TAMAM';
+      }, 800);
+    }
+
+    // ── Glitch random flicker on grid
+    setInterval(() => {
+      const grid = document.querySelector('.grid-bg');
+      grid.style.opacity = (Math.random() * .3 + .7).toString();
+      setTimeout(() => { grid.style.opacity = '1'; }, 60);
+    }, 5000);
+  </script>
+</body>
+</html>
